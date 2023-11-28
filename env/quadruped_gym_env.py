@@ -224,8 +224,25 @@ class QuadrupedGymEnv(gym.Env):
       # [TODO] Set observation upper and lower ranges. What are reasonable limits? 
       # Note 50 is arbitrary below, you may have more or less
       # if using CPG-RL, remember to include limits on these
-      observation_high = (np.zeros(50) + OBSERVATION_EPS)
-      observation_low = (np.zeros(50) -  OBSERVATION_EPS)
+      observation_high = (np.concatenate((self._robot_config.UPPER_ANGLE_JOINT,
+                                          self._robot_config.VELOCITY_LIMITS,
+                                          self._robot_config.TORQUE_LIMITS,
+                                          np.array([1.0]*4),
+                                          np.array([5 ,0.5 , 0.5]), #This is for the base linear velocity
+                                          np.array([1, 1, 1]), #This is for the base angular velocity (roll, pitch, yaw)
+                                          [1, 1, 1, 1], # Feet in contact
+                                          np.array([3, 3, 3, 3])
+                                          np.array([7, 7, 7, 7]))) + OBSERVATION_EPS)
+        
+      observation_low = (np.concatenate((self._robot_config.LOWER_ANGLE_JOINT,
+                                         -self._robot_config.VELOCITY_LIMITS,
+                                         -self._robot_config.TORQUE_LIMITS,
+                                         np.array([-1.0]*4),
+                                         np.array([0.5 ,0 , 0]),
+                                         np.array([0, 0, 0]),
+                                         [0, 0, 0, 0],
+                                         np.array([0, 0, 0, 0]),
+                                         np.array([0, 0, 0, 0]))) -  OBSERVATION_EPS)
     else:
       raise ValueError("observation space not defined or not intended")
 
@@ -253,8 +270,17 @@ class QuadrupedGymEnv(gym.Env):
     elif self._observation_space_mode == "LR_COURSE_OBS":
       # [TODO] Get observation from robot. What are reasonable measurements we could get on hardware?
       # if using the CPG, you can include states with self._cpg.get_r(), for example
-      # 50 is arbitrary
-      self._observation = np.zeros(50)
+      # 50 is arbitrary   -> See [2] p.4
+      self._observation = np.concatenate((self.robot.GetMotorAngles(), # If CPG, not needed for omnidirectional motions [2]p.5
+                                          self.robot.GetMotorVelocities(), # '' same
+                                          self.robot.GetMotorTorques(), # useful?
+                                          self.robot.GetBaseOrientation(),
+                                          self.robot.GetBaseLinearVelocity(),
+                                          self.robot.GetBaseAngularVelocity(), # Info on stability?
+                                          self.robot.GetContactInfo(), # Foot contact bool (see [2])
+                                          self._cpg.get_r(), # Know amplitudes of CPGs (see [2], p.3)
+                                          self._cpg.get_theta(), # Know phases of CPGs (see [2], p.3)
+                                         ))
 
     else:
       raise ValueError("observation space not defined or not intended")
@@ -358,8 +384,47 @@ class QuadrupedGymEnv(gym.Env):
     
   def _reward_lr_course(self):
     """ Implement your reward function here. How will you improve upon the above? """
-    # [TODO] add your reward function. 
-    return 0
+    # [TODO] add your reward function. -> base on slides of lect7 
+    # source: "Learning to Walk in Minutes Using Massively Parallel Deep Reinforcement Learning"
+    dt = self._time_step
+    des_vel_x = 0.5
+    des_vel_y = 0
+    des_ang_vel_z = 0
+    
+    # Rewards
+    velx_tracking_reward = 1 * dt * np.exp(-1/0.25 * (self.robot.GetBaseLinearVelocity()[0] - des_vel_x)**2)
+    # or use _reward_fwd_locomotion instead of this last line (also get yaw and drift reward)
+    
+    vely_tracking_reward = 1 * dt * np.exp(-1/0.25 * (self.robot.GetBaseLinearVelocity()[1] - des_vel_y)**2)
+    ang_velz_tracking_reward = 0.5 * dt * np.exp(-1/0.25 *(self.robot.GetBaseAngularVelocity()[2] - des_ang_vel_z)**2)
+    
+    
+    # Penalty
+    velz_penalty = -4 * dt * self.robot.GetBaseLinearVelocity()[2]**2
+    ang_velxy_penalty = -0.05 * dt * (self.robot.GetBaseLinearVelocity()[0]**2 + self.robot.GetBaseLinearVelocity()[1]**2)
+    
+    
+    # Create a smoother, more natural motion
+    joint_motion = 0
+    joint_torques = 0
+    
+    for tau,vel in zip(self._dt_motor_torques,self._dt_motor_velocities):
+    #joint_motion -= 0.001 * dt *(np.norm(???)**2 + np.norm(vel)**2) #How to get joint acceleration?
+    joint_torques -= 0.00002 * dt * np.norm(tau)**2
+    
+    _, col, _, _ = self.robot.GetContactInfo()                            
+    collisions = -0.001 * dt * col
+    
+    # Reward reduction of goal distance and penalize energy
+    goal_energy_reward = self._reward_flag_run
+    
+    # action_rate?
+    # feet_air_time? reward term to take longer steps -> more visually appealing behavior
+    
+    tot_reward = velx_tracking_reward + vely_tracking_reward + ang_velz_tracking_reward \
+                + velz_penalty + ang_velxy_penalty + joint_torques + collisions + goal_energy_reward
+    
+    return max(tot_reward, 0)
 
   def _reward(self):
     """ Get reward depending on task"""
@@ -417,16 +482,17 @@ class QuadrupedGymEnv(gym.Env):
     for i in range(4):
       # get Jacobian and foot position in leg frame for leg i (see ComputeJacobianAndPosition() in quadruped.py)
       # [TODO]
-      # desired foot position i (from RL above)
-      Pd = np.zeros(3) # [TODO]
-      # desired foot velocity i
-      vd = np.zeros(3) 
-      # foot velocity in leg frame i (Equation 2)
-      # [TODO]
-      # calculate torques with Cartesian PD (Equation 5) [Make sure you are using matrix multiplications]
-      tau = np.zeros(3) # [TODO]
-
-      action[3*i:3*i+3] = tau
+        J, pos = self.robot.ComputeJacobianAndPosition(i)
+        # desired foot position i (from RL above)
+        Pd = des_foot_pos[i] # [TODO]
+        # desired foot velocity i
+        vd = 0
+        # foot velocity in leg frame i (Equation 2)
+        v = np.dot(J, qd[i])
+        
+        # calculate torques with Cartesian PD (Equation 5) [Make sure you are using matrix multiplications]
+        tau = np.dot(J.T, (kpCartesian*(Pd-pos) + kdCartesian*(vd-v))) # [TODO]
+        action[3*i:3*i+3] = tau
 
     return action
 
@@ -459,20 +525,22 @@ class QuadrupedGymEnv(gym.Env):
     action = np.zeros(12)
     # loop through each leg
     for i in range(4):
-      # get desired foot i pos (xi, yi, zi)
-      x = xs[i]
-      y = sideSign[i] * foot_y # careful of sign
-      z = zs[i]
+        # get desired foot i pos (xi, yi, zi)
+        x = xs[i]
+        y = sideSign[i] * foot_y # careful of sign
+        z = zs[i]
 
-      # call inverse kinematics to get corresponding joint angles
-      q_des = np.zeros(3) # [TODO]
-      # Add joint PD contribution to tau
-      tau = np.zeros(3) # [TODO] 
+        # call inverse kinematics to get corresponding joint angles
+        q_des = self.robot.ComputeInverseKinematics(i, np.array([x, y, z])) # [TODO]
+        dq_des = 0
 
-      # add Cartesian PD contribution (as you wish)
-      # tau +=
+        # Add joint PD contribution to tau
+        tau = kp * (q_des - q) + kd * (dq_des - dq) # [TODO] 
 
-      action[3*i:3*i+3] = tau
+        # add Cartesian PD contribution (as you wish)
+        # tau +=
+
+        action[3*i:3*i+3] = tau
 
     return action
 
