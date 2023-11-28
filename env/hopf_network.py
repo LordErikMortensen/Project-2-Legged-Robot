@@ -147,17 +147,14 @@ class HopfNetwork():
       self._integrate_hopf_equations_rl()
     
     # map CPG variables to Cartesian foot xz positions (Equations 8, 9) 
-    X = self.X.copy()
-    x = np.zeros(4)
-    z = np.zeros(4)
-
-    for i in range(4):
-      r, theta = X[:,i]
-      x[i] = self._des_step_len * r * np.cos(theta) # [TODO]
-      if np.sin(theta) > 0:
-        z[i] = -self._robot_height + self._ground_clearance * np.sin(theta) # [TODO] 
-      else:
-        z[i] = -self._robot_height + self._ground_penetration * np.sin(theta) # [TODO] 
+    thetas = self.get_theta()
+    x = -self.des_step_len*self.get_r()*np.cos(thetas)# [TODO]
+    z = np.zeros(4) # [TODO]
+    for i in range(len(thetas)):
+        if np.sin(thetas[i])>0:
+            z[i] = -self._robot_height+self._ground_clearance*np.sin(thetas[i])
+        else:
+            z[i] = -self._robot_height+self._ground_penetration*np.sin(thetas[i]) 
 
     # scale x by step length
     if not self.use_RL:
