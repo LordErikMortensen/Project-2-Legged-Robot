@@ -191,14 +191,17 @@ class HopfNetwork():
         for j in range(4):
           theta_dot += r*self._coupling_strength * np.sin(self.get_theta()[j] - theta - self.PHI[i,j]) #[TODO]
         
- 
+
       # set X_dot[:,i]
       X_dot[:,i] = [r_dot, theta_dot]
 
     # integrate 
-    self.X[0,:] = np.array([np.add(self.X[0,:],X_dot_prev[0,:]*self._dt)])
-    self.X[1,:] = np.array([np.add(self.X[1,:],X_dot_prev[1,:]*self._dt)]) # [TODO/NOTOURS]
+    self.X[0,:] = np.array([np.add(self.X[0,:], X_dot_prev[0,:]*self._dt)]) # [TODO]
+
+    self.X[1,:] = np.array([np.add(self.X[1,:], X_dot_prev[1,:]*self._dt)]) 
+
     self.X_dot = X_dot
+    
     # mod phase variables to keep between 0 and 2pi
     self.X[1,:] = self.X[1,:] % (2*np.pi)
 
