@@ -68,7 +68,7 @@ TEST_STEPS = int(10 / (TIME_STEP))
 t = np.arange(TEST_STEPS)*TIME_STEP
 
 # [TODO] initialize data structures to save CPG and robot states
-
+feet_pos_log = np.zeros([4, 3, TEST_STEPS])
 
 ############## Sample Gains
 # joint PD gains
@@ -88,6 +88,7 @@ for j in range(TEST_STEPS):
   dq = env.robot.GetMotorVelocities() 
 
   # loop through desired foot positions and calculate torques
+  ts_feet_pos_log = np.zeros([4,3])
   for i in range(4):
     # initialize torques for legi
     tau = np.zeros(3)
@@ -104,9 +105,6 @@ for j in range(TEST_STEPS):
       # Get current Jacobian and foot position in leg frame (see ComputeJacobianAndPosition() in quadruped.py)
       # [TODO] 
       J,foot_pos = env.robot.ComputeJacobianAndPosition(i)
-      x_log[j,i] = foot_pos[0]
-      y_log[j,i] = foot_pos[1]
-      z_log[j,i] = foot_pos[2]
       # Get current foot velocity in leg frame (Equation 2)
       # [TODO] 
       foot_vel = np.matmul(J,dq[i*3:i*3+3])
@@ -121,11 +119,13 @@ for j in range(TEST_STEPS):
 
     # Set tau for legi in action vector
     action[3*i:3*i+3] = tau
-
+    ts_feet_pos_log[i,:] = foot_pos
   # send torques to robot and simulate TIME_STEP seconds 
   env.step(action) 
 
   # [TODO] save any CPG or robot states
+  feet_pos_log[:,:,j] = ts_feet_pos_log
+
 
 
 

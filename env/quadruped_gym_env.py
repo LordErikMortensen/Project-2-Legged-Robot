@@ -231,7 +231,7 @@ class QuadrupedGymEnv(gym.Env):
                                           np.array([5 ,0.5 , 0.5]), #This is for the base linear velocity
                                           np.array([1, 1, 1]), #This is for the base angular velocity (roll, pitch, yaw)
                                           [1, 1, 1, 1], # Feet in contact
-                                          np.array([3, 3, 3, 3])
+                                          np.array([3, 3, 3, 3]),
                                           np.array([7, 7, 7, 7]))) + OBSERVATION_EPS)
         
       observation_low = (np.concatenate((self._robot_config.LOWER_ANGLE_JOINT,
@@ -409,20 +409,20 @@ class QuadrupedGymEnv(gym.Env):
     joint_torques = 0
     
     for tau,vel in zip(self._dt_motor_torques,self._dt_motor_velocities):
-    #joint_motion -= 0.001 * dt *(np.norm(???)**2 + np.norm(vel)**2) #How to get joint acceleration?
-    joint_torques -= 0.00002 * dt * np.norm(tau)**2
-    
-    _, col, _, _ = self.robot.GetContactInfo()                            
-    collisions = -0.001 * dt * col
-    
-    # Reward reduction of goal distance and penalize energy
-    goal_energy_reward = self._reward_flag_run
-    
-    # action_rate?
-    # feet_air_time? reward term to take longer steps -> more visually appealing behavior
-    
-    tot_reward = velx_tracking_reward + vely_tracking_reward + ang_velz_tracking_reward \
-                + velz_penalty + ang_velxy_penalty + joint_torques + collisions + goal_energy_reward
+      #joint_motion -= 0.001 * dt *(np.norm(???)**2 + np.norm(vel)**2) #How to get joint acceleration?
+      joint_torques -= 0.00002 * dt * np.norm(tau)**2
+      
+      _, col, _, _ = self.robot.GetContactInfo()                            
+      collisions = -0.001 * dt * col
+      
+      # Reward reduction of goal distance and penalize energy
+      goal_energy_reward = self._reward_flag_run
+      
+      # action_rate?
+      # feet_air_time? reward term to take longer steps -> more visually appealing behavior
+      
+      tot_reward = velx_tracking_reward + vely_tracking_reward + ang_velz_tracking_reward \
+                  + velz_penalty + ang_velxy_penalty + joint_torques + collisions + goal_energy_reward
     
     return max(tot_reward, 0)
 

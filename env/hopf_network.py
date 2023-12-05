@@ -148,7 +148,7 @@ class HopfNetwork():
     
     # map CPG variables to Cartesian foot xz positions (Equations 8, 9) 
     thetas = self.get_theta()
-    x = -self.des_step_len*self.get_r()*np.cos(thetas)# [TODO]
+    x = -self._des_step_len*self.get_r()*np.cos(thetas)# [TODO]
     z = np.zeros(4) # [TODO]
     for i in range(len(thetas)):
         if np.sin(thetas[i])>0:
@@ -177,7 +177,7 @@ class HopfNetwork():
     # loop through each leg's oscillator
     for i in range(4):
       # get r_i, theta_i from X
-      r, theta = self.get_r(self)[i], self.get_theta(self)[i] # [TODO]
+      r, theta = self.get_r()[i], self.get_theta()[i] # [TODO]
       # compute r_dot (Equation 6)
       r_dot = self._alpha * (self._mu - r**2) * r # [TODO]
       # determine whether oscillator i is in swing or stance phase to set natural frequency omega_swing or omega_stance (see Section 3)
@@ -189,7 +189,7 @@ class HopfNetwork():
       # loop through other oscillators to add coupling (Equation 7)
       if self._couple:
         for j in range(4):
-          theta_dot += r*self._coupling_strength * np.sin(theta[j] - theta - self.PHI[i,j]) #[TODO]
+          theta_dot += r*self._coupling_strength * np.sin(self.get_theta()[j] - theta - self.PHI[i,j]) #[TODO]
         
  
       # set X_dot[:,i]
