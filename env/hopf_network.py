@@ -49,7 +49,7 @@ class HopfNetwork():
   """
   def __init__(self,
                 mu=1**2,                 # intrinsic amplitude, converges to sqrt(mu)
-                omega_swing=5*2*np.pi,   # frequency in swing phase (can edit)
+                omega_swing=5*2*np.pi,   # frequency in swing phase (can edit) Faster for bound
                 omega_stance=2*2*np.pi,  # frequency in stance phase (can edit)
                 gait="TROT",             # Gait, can be TROT, WALK, PACE, BOUND, etc.
                 alpha=50,                # amplitude convergence factor
@@ -244,7 +244,7 @@ class HopfNetwork():
       # get r_i, theta_i from X
       r, theta = X[:,i]
       # amplitude (use mu from RL, i.e. self._mu_rl[i])
-      r_dot = self.alpha * (self._mu[i] - r^2) * r  # [TODO]
+      r_dot = self._alpha * (self._mu_rl[i] - r**2) * r  # [TODO]
       # phase (use omega from RL, i.e. self._omega_rl[i])
       theta_dot = self._omega_rl[i] *  1# [TODO]
 
