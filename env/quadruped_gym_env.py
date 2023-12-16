@@ -394,78 +394,78 @@ class QuadrupedGymEnv(gym.Env):
     
     return max(reward,0) # keep rewards positive
     
-def _reward_lr_course(self):
-  """ Implement your reward function here. How will you improve upon the above? """
-  # [TODO] add your reward function. -> based on slides of lect7 
-  # source: "Learning to Walk in Minutes Using Massively Parallel Deep Reinforcement Learning"
-  dt = self._time_step
-  desired_base_height = 0.3 #correct height?
-  des_vel_x = 0.5
-  des_vel_y = 0
-  des_ang_vel_z = 0
-  curr_dist_to_goal, angle = self.get_distance_and_angle_to_goal()
-  
-  # _reward_fwd_locomotion rewards linear velocity along x and penalizes yaw, drift and energy
-  reward_loco = self._reward_fwd_locomotion(des_vel_x)
-  
-  # Rewards movements that brings the robot closer to the goal
-  dist_reward = 10 * (self._prev_pos_to_goal - curr_dist_to_goal)
-  
-  # Linear velocity tracking (already done for x in reward_loco):
-  vely_tracking_reward = 1 * dt * np.exp(-1/0.25 * (self.robot.GetBaseLinearVelocity()[1] - des_vel_y)**2)
-  
-  # Linear velocity penality (in z):
-  velz_penalty = -4 * dt * self.robot.GetBaseLinearVelocity()[2]**2
-  
-  # Angluar velocity tracking (in z):
-  ang_velz_tracking_reward = 0.5 * dt * np.exp(-1/0.25 *(self.robot.GetBaseAngularVelocity()[2] - des_ang_vel_z)**2)
-  
-  # Peanlize wrong height in z (necessary??)
-  height_penalty = -0.1 * dt * np.abs(self.GetBasePosition()[2] - desired_base_height)
-  
-  # penalize angular velocities along x and y axis
-  ang_velxy_penalty = -0.05 * dt * (self.robot.GetBaseLinearVelocity()[0]**2 + self.robot.GetBaseLinearVelocity()[1]**2)
-  
-  
-  # penalize roll? Is this redundant with penalizing angluar velocities?
-  # roll_penalty = -some_factor * np.abs(self.robot.GetBaseOrientationRollPitchYaw()[0])
-  
-  # penalize pitch? Is this redundant with penalizing angluar velocities?
-  # pitch_penalty = -some_factor * np.abs(self.robot.GetBaseOrientationRollPitchYaw()[1])
-  
-  
-  # Create a smoother, more natural motion (penalize joint motion and joint torques)
-  joint_motion = 0
-  joint_torques = 0
-  
-  for tau,vel in zip(self._dt_motor_torques,self._dt_motor_velocities):
-      #joint_motion -= 0.001 * dt *(np.norm(???)**2 + np.norm(vel)**2) #How to get joint acceleration?
-      joint_torques -= 0.00002 * dt * np.norm(tau)**2
-    
-  
-  # Penalize collisions
-  _, col, _, _ = self.robot.GetContactInfo()
-  collisions = -0.001 * dt * col
-    
-  
-  # action_rate?
-  # feet_air_time? reward term to take longer steps -> more visually appealing behavior
-    
-  tot_reward = reward_loco + dist_reward + vely_tracking_reward + velz_penalty + ang_velz_tracking_reward \
-  + height_penalty + ang_velxy_penalty + joint_torques + collisions
-  
-  return max(tot_reward, 0)
+  def _reward_lr_course(self):
+      """ Implement your reward function here. How will you improve upon the above? """
+      # [TODO] add your reward function. -> based on slides of lect7 
+      # source: "Learning to Walk in Minutes Using Massively Parallel Deep Reinforcement Learning"
+      dt = self._time_step
+      desired_base_height = 0.3 #correct height?
+      des_vel_x = 0.5
+      des_vel_y = 0
+      des_ang_vel_z = 0
+      curr_dist_to_goal, angle = self.get_distance_and_angle_to_goal()
+      
+      # _reward_fwd_locomotion rewards linear velocity along x and penalizes yaw, drift and energy
+      reward_loco = self._reward_fwd_locomotion(des_vel_x)
+      
+      # Rewards movements that brings the robot closer to the goal
+      dist_reward = 10 * (self._prev_pos_to_goal - curr_dist_to_goal)
+      
+      # Linear velocity tracking (already done for x in reward_loco):
+      vely_tracking_reward = 1 * dt * np.exp(-1/0.25 * (self.robot.GetBaseLinearVelocity()[1] - des_vel_y)**2)
+      
+      # Linear velocity penality (in z):
+      velz_penalty = -4 * dt * self.robot.GetBaseLinearVelocity()[2]**2
+      
+      # Angluar velocity tracking (in z):
+      ang_velz_tracking_reward = 0.5 * dt * np.exp(-1/0.25 (self.robot.GetBaseAngularVelocity()[2] - des_ang_vel_z)*2)
+      
+      # Peanlize wrong height in z (necessary??)
+      height_penalty = -0.1 * dt * np.abs(self.GetBasePosition()[2] - desired_base_height)
+      
+      # penalize angular velocities along x and y axis
+      ang_velxy_penalty = -0.05 * dt * (self.robot.GetBaseLinearVelocity()[0]*2 + self.robot.GetBaseLinearVelocity()[1]*2)
+      
+      
+      # penalize roll? Is this redundant with penalizing angluar velocities?
+      # roll_penalty = -some_factor * np.abs(self.robot.GetBaseOrientationRollPitchYaw()[0])
+      
+      # penalize pitch? Is this redundant with penalizing angluar velocities?
+      # pitch_penalty = -some_factor * np.abs(self.robot.GetBaseOrientationRollPitchYaw()[1])
+      
+      
+      # Create a smoother, more natural motion (penalize joint motion and joint torques)
+      joint_motion = 0
+      joint_torques = 0
+      
+      for tau,vel in zip(self._dt_motor_torques,self._dt_motor_velocities):
+          #joint_motion -= 0.001 * dt (np.norm(???)2 + np.norm(vel)*2) #How to get joint acceleration?
+          joint_torques -= 0.00002 * dt * np.norm(tau)**2
+      
+      
+      # Penalize collisions
+      _, col, _, _ = self.robot.GetContactInfo()
+      collisions = -0.001 * dt * col
+        
+      
+      # action_rate?
+      # feet_air_time? reward term to take longer steps -> more visually appealing behavior
+        
+      tot_reward = reward_loco + dist_reward + vely_tracking_reward + velz_penalty + ang_velz_tracking_reward \
+      + height_penalty + ang_velxy_penalty + joint_torques + collisions
+      
+      return max(tot_reward, 0)
 
   def _reward(self):
-    """ Get reward depending on task"""
-    if self._TASK_ENV == "FWD_LOCOMOTION":
-      return self._reward_fwd_locomotion()
-    elif self._TASK_ENV == "LR_COURSE_TASK":
-      return self._reward_lr_course()
-    elif self._TASK_ENV == "FLAGRUN":
-      return self._reward_flag_run()
-    else:
-      raise ValueError("This task mode not implemented yet.")
+      """ Get reward depending on task"""
+      if self._TASK_ENV == "FWD_LOCOMOTION":
+        return self._reward_fwd_locomotion()
+      elif self._TASK_ENV == "LR_COURSE_TASK":
+        return self._reward_lr_course()
+      elif self._TASK_ENV == "FLAGRUN":
+        return self._reward_flag_run()
+      else:
+        raise ValueError("This task mode not implemented yet.")
 
   ######################################################################################
   # Step simulation, map policy network actions to joint commands, etc. 
@@ -514,14 +514,14 @@ def _reward_lr_course(self):
       # [TODO]
         J, pos = self.robot.ComputeJacobianAndPosition(i)
         # desired foot position i (from RL above)
-        Pd = des_foot_pos[i] # [TODO]
+        Pd = des_foot_pos # [TODO]
         # desired foot velocity i
         vd = 0
         # foot velocity in leg frame i (Equation 2)
-        v = np.dot(J, qd[i])
+        v = np.dot(J, qd[3*i:3*i+3])
         
         # calculate torques with Cartesian PD (Equation 5) [Make sure you are using matrix multiplications]
-        tau = np.dot(J.T, (kpCartesian*(Pd-pos) + kdCartesian*(vd-v))) # [TODO]
+        tau = np.dot(J.T, (kpCartesian@(Pd[3*i:3*i+3]-pos) + kdCartesian@(vd-v))) # [TODO]
         action[3*i:3*i+3] = tau
 
     return action
@@ -578,7 +578,6 @@ def _reward_lr_course(self):
 
     return action
 
-
   def step(self, action):
     """ Step forward the simulation, given the action. """
     curr_act = action.copy()
@@ -609,7 +608,7 @@ def _reward_lr_course(self):
     if self._termination() or self.get_sim_time() > self._MAX_EP_LEN:
       done = True
 
-    if "FLAGRUN" in self._TASK_ENV:
+    if "FLAGRUN" in self._TASK_ENV or "LR_COURSE_TASK" in self._TASK_ENV:
       dist_to_goal, _ = self.get_distance_and_angle_to_goal()
       if dist_to_goal < 0.5:
         self._reset_goal()
@@ -635,10 +634,10 @@ def _reward_lr_course(self):
           self._pybullet_client.COV_ENABLE_PLANAR_REFLECTION, 0)
       self._pybullet_client.setGravity(0, 0, -9.8)
       self.robot = (quadruped.Quadruped(pybullet_client=self._pybullet_client,
-                                         robot_config=self._robot_config,
-                                         motor_control_mode=self._motor_control_mode,
-                                         on_rack=self._on_rack,
-                                         render=self._is_render))
+                                          robot_config=self._robot_config,
+                                          motor_control_mode=self._motor_control_mode,
+                                          on_rack=self._on_rack,
+                                          render=self._is_render))
       if self._using_competition_env:
         self._ground_mu_k = ground_mu_k = 0.8
         self._pybullet_client.changeDynamics(self.plane, -1, lateralFriction=ground_mu_k)
@@ -658,7 +657,7 @@ def _reward_lr_course(self):
         self._add_base_mass_offset()
 
 
-      if self._TASK_ENV == "FLAGRUN":
+      if self._TASK_ENV == "FLAGRUN" or self._TASK_ENV == "LR_COURSE_TASK":
         self.goal_id = None
         self._reset_goal()
 
@@ -672,13 +671,12 @@ def _reward_lr_course(self):
 
     if self._is_render:
       self._pybullet_client.resetDebugVisualizerCamera(self._cam_dist, self._cam_yaw,
-                                                       self._cam_pitch, [0, 0, 0])
+                                                        self._cam_pitch, [0, 0, 0])
 
     self._settle_robot()
     self._last_action = np.zeros(self._action_dim)
     if self._is_record_video:
       self.recordVideoHelper()
-
     return self._noisy_observation()
 
   def _reset_goal(self):
@@ -821,16 +819,16 @@ def _reward_lr_course(self):
         roll=0,
         upAxisIndex=2)
     proj_matrix = self._pybullet_client.computeProjectionMatrixFOV(fov=60,
-                                                                   aspect=float(self._render_width) /
-                                                                   self._render_height,
-                                                                   nearVal=0.1,
-                                                                   farVal=100.0)
+                                                                    aspect=float(self._render_width) /
+                                                                    self._render_height,
+                                                                    nearVal=0.1,
+                                                                    farVal=100.0)
     (_, _, px, _,
-     _) = self._pybullet_client.getCameraImage(width=self._render_width,
-                                               height=self._render_height,
-                                               viewMatrix=view_matrix,
-                                               projectionMatrix=proj_matrix,
-                                               renderer=pybullet.ER_BULLET_HARDWARE_OPENGL)
+      _) = self._pybullet_client.getCameraImage(width=self._render_width,
+                                                height=self._render_height,
+                                                viewMatrix=view_matrix,
+                                                projectionMatrix=proj_matrix,
+                                                renderer=pybullet.ER_BULLET_HARDWARE_OPENGL)
     rgb_array = np.array(px)
     rgb_array = rgb_array[:, :, :3]
     return rgb_array
@@ -958,8 +956,8 @@ def _reward_lr_course(self):
 
 def test_env():
   env = QuadrupedGymEnv(render=True, 
-                        on_rack=True,
-                        motor_control_mode='PD',
+                        on_rack=False,
+                        motor_control_mode='CPG',
                         action_repeat=100,
                         )
 

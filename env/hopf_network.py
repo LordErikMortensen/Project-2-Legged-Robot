@@ -49,9 +49,9 @@ class HopfNetwork():
   """
   def __init__(self,
                 mu=1**2,                 # intrinsic amplitude, converges to sqrt(mu)
-                omega_swing=5*2*np.pi,   # frequency in swing phase (can edit) Faster for bound
-                omega_stance=2*2*np.pi,  # frequency in stance phase (can edit)
-                gait="TROT",             # Gait, can be TROT, WALK, PACE, BOUND, etc.
+                omega_swing= 25*np.pi, #5*2*np.pi,   # frequency in swing phase (can edit) Faster for bound
+                omega_stance= 15*np.pi, #2*2*np.pi,  # frequency in stance phase (can edit)
+                gait="PACE",             # Gait, can be TROT15/15, WALK 20/15, PACE 25/15, BOUND 13/3 -> swing has to be at least 2*stance to advance, etc.
                 alpha=50,                # amplitude convergence factor
                 coupling_strength=1,     # coefficient to multiply coupling matrix
                 couple=True,             # whether oscillators should be coupled
