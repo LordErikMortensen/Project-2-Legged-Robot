@@ -61,13 +61,21 @@ class HopfNetwork():
                 robot_height=0.3,        # in nominal case (standing) 
                 des_step_len=0.05,       # desired step length 
                 max_step_len_rl=0.1,     # max step length, for RL scaling 
-                use_RL=False             # whether to learn parameters with RL 
+                use_RL=False,             # whether to learn parameters with RL 
+                cpg_type = "CPG",    # CPG or CPG_phi #VICTOR
+                psi = 0
                 ):
     
     ###############
     # initialize CPG data structures: amplitude is row 0, and phase is row 1
+    if cpg_type != "CPG_phi":#VICTOR
+      cpg_type = "CPG"
+    self._cpg_type = cpg_type #VICTOR
     self.X = np.zeros((2,4))
     self.X_dot = np.zeros((2,4))
+    if self._cpg_type == "CPG_phi":
+      self.X = np.zeros((3,4))
+      self.X_dot = np.zeros((3,4))
 
     # save parameters 
     self._mu = mu
@@ -78,10 +86,14 @@ class HopfNetwork():
     self._coupling_strength = coupling_strength
     self._dt = time_step
     self._set_gait(gait)
+    if self._cpg_type == "CPG_phi":
+      self._psi = psi
 
     # set oscillator initial conditions  
     self.X[0,:] = np.random.rand(4) * .1
     self.X[1,:] = self.PHI[0,:] 
+    if self._cpg_type == "CPG_phi":
+      self.X[2,:] = self.PHI[0,:]  #np.random.rand(4) * .1
 
     # save body and foot shaping
     self._ground_clearance = ground_clearance 
@@ -93,6 +105,9 @@ class HopfNetwork():
     self.use_RL = use_RL
     self._omega_rl = np.zeros(4)
     self._mu_rl = np.zeros(4) 
+    if self._cpg_type == "CPG_phi":
+      self._psi_rl = np.zeros(4)
+
     self._max_step_len_rl = max_step_len_rl
     if use_RL:
       self.X[0,:] = MU_LOW # mapping MU_LOW=1 to MU_UPP=2
@@ -146,25 +161,43 @@ class HopfNetwork():
     else:
       self._integrate_hopf_equations_rl()
     
-    # map CPG variables to Cartesian foot xz positions (Equations 8, 9) 
-    thetas = self.get_theta()
-    x = -self._des_step_len*self.get_r()*np.cos(thetas)# [TODO]
-    z = np.zeros(4) # [TODO]
-    for i in range(len(thetas)):
-        if np.sin(thetas[i])>0:
-            z[i] = -self._robot_height+self._ground_clearance*np.sin(thetas[i])
-        else:
-            z[i] = -self._robot_height+self._ground_penetration*np.sin(thetas[i]) 
+    if self._cpg_type == "CPG":
+      # map CPG variables to Cartesian foot xz positions (Equations 8, 9) 
+      thetas = self.get_theta()
+      x = -self._des_step_len*self.get_r()*np.cos(thetas)# [TODO]
+      z = np.zeros(4) # [TODO]
+      for i in range(len(thetas)):
+          if np.sin(thetas[i])>0:
+              z[i] = -self._robot_height+self._ground_clearance*np.sin(thetas[i])
+          else:
+              z[i] = -self._robot_height+self._ground_penetration*np.sin(thetas[i]) 
 
+    elif self._cpg_type == "CPG_phi":
+      # map CPG variables to Cartesian foot xz positions (Equations 8, 9) 
+      x, y, z = np.zeros(4), np.zeros(4), np.zeros(4)
+      thetas = self.get_theta()
+      phis = self.get_phi()
+      x = -self._des_step_len*(self.get_r()-1)*np.cos(thetas)*np.cos(phis)# [TODO]
+      y = -self._des_step_len*(self.get_r()-1)*np.cos(thetas)*np.sin(phis)# [TODO]
+      for i in range(len(thetas)):
+          if np.sin(thetas[i])>0:
+              z[i] = -self._robot_height+self._ground_clearance*np.sin(thetas[i])
+          else:
+              z[i] = -self._robot_height+self._ground_penetration*np.sin(thetas[i]) 
+
+        # print("CPG phi not implemented yet") ###################################################################### NOT IMPLEMENTED YET
     # scale x by step length
     if not self.use_RL:
       # use des step len, fixed
       return x, z
-    else:
+    elif self._cpg_type == "CPG": ## MODFIEEEDDDD BY VICTOR
       # RL uses amplitude to set max step length
       r = np.clip(self.X[0,:],MU_LOW,MU_UPP) 
       return -self._max_step_len_rl * (r - MU_LOW) * np.cos(self.X[1,:]), z
-
+    elif self._cpg_type == "CPG_phi": 
+      # RL uses amplitude to set max step length
+      r = np.clip(self.X[0,:],MU_LOW,MU_UPP) 
+      return -self._max_step_len_rl * (r - MU_LOW) * np.cos(self.X[1,:]), y, z
       
         
   def _integrate_hopf_equations(self):
@@ -204,6 +237,7 @@ class HopfNetwork():
     
     # mod phase variables to keep between 0 and 2pi
     self.X[1,:] = self.X[1,:] % (2*np.pi)
+    ###################################################################### NOT IMPLEMENTED YET
 
 
   ###################### Helper functions for accessing CPG States
@@ -215,6 +249,10 @@ class HopfNetwork():
     """ Get CPG phases (theta) """
     return self.X[1,:]
 
+  def get_phi(self):
+    """ Get CPG leg orientation (phi) """
+    return self.X_dot[2,:]
+
   def get_dr(self):
     """ Get CPG amplitude derivatives (r_dot) """
     return self.X_dot[0,:]
@@ -222,6 +260,10 @@ class HopfNetwork():
   def get_dtheta(self):
     """ Get CPG phase derivatives (theta_dot) """
     return self.X_dot[1,:]
+
+  def get_dphi(self):
+    """ Get CPG leg orientation derivative (phi_dot) """
+    return self.X_dot[2,:]
 
   ###################### Functions for setting parameters for RL
   def set_omega_rl(self, omegas):
@@ -232,25 +274,53 @@ class HopfNetwork():
     """ Set intrinsic amplitude setpoints. """
     self._mu_rl = mus
 
+  def set_psi_rl(self, psis):
+    """ Set intrinsic leg angle setpoints. """
+    self._psi_rl = psis ## Find where this is set
+
   def _integrate_hopf_equations_rl(self):
     """ Hopf polar equations and integration, using quantities set by RL """
     # bookkeeping - save copies of current CPG states 
     X = self.X.copy()
     X_dot_prev = self.X_dot.copy() 
-    X_dot = np.zeros((2,4))
 
-    # loop through each leg's oscillator, find current velocities
-    for i in range(4):
-      # get r_i, theta_i from X
-      r, theta = X[:,i]
-      # amplitude (use mu from RL, i.e. self._mu_rl[i])
-      r_dot = self._alpha * (self._mu_rl[i] - r**2) * r  # [TODO]
-      # phase (use omega from RL, i.e. self._omega_rl[i])
-      theta_dot = self._omega_rl[i] *  1# [TODO]
+    if self._cpg_type == "CPG":
+      X_dot = np.zeros((2,4))
 
-      X_dot[:,i] = [r_dot, theta_dot]
+      # loop through each leg's oscillator, find current velocities
+      for i in range(4):
+        # get r_i, theta_i from X
+        r, theta = X[:,i]
+        # amplitude (use mu from RL, i.e. self._mu_rl[i])
+        r_dot = self._alpha * (self._mu_rl[i] - r**2) * r  # [TODO]
+        # phase (use omega from RL, i.e. self._omega_rl[i])
+        theta_dot = self._omega_rl[i] *  1# [TODO]
 
-    # integrate 
-    self.X = X + (X_dot_prev + X_dot) * self._dt / 2
-    self.X_dot = X_dot
-    self.X[1,:] = self.X[1,:] % (2*np.pi)
+        X_dot[:,i] = [r_dot, theta_dot]
+
+      # integrate 
+      self.X = X + (X_dot_prev + X_dot) * self._dt / 2
+      self.X_dot = X_dot
+      self.X[1,:] = self.X[1,:] % (2*np.pi)
+
+    # OWN STUFF
+    elif self._cpg_type == "CPG_phi":
+      X_dot = np.zeros((3,4))
+
+      # loop through each leg's oscillator, find current velocities
+      for i in range(4):
+        # get r_i, theta_i from X
+        r, theta, phi = X[:,i]
+        # amplitude (use mu from RL, i.e. self._mu_rl[i])
+        r_dot = self._alpha * (self._mu_rl[i] - r**2) * r  # [TODO]
+        # phase (use omega from RL, i.e. self._omega_rl[i])
+        theta_dot = self._omega_rl[i] *  1# [TODO]
+        # leg direction (use psi from RL, i.e. self._psi_rl[i])
+        phi_dot = self._psi_rl[i] *  1# [TODO]
+        X_dot[:,i] = [r_dot, theta_dot, phi_dot]
+
+      # integrate 
+      self.X = X + (X_dot_prev + X_dot) * self._dt / 2
+      self.X_dot = X_dot
+      self.X[1,:] = self.X[1,:] % (2*np.pi)
+      self.X[2,:] = self.X[2,:] % (2*np.pi)

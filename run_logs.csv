@@ -1,0 +1,9 @@
+RUN_ID,LEARNING_ALG,motor_control_mode,task_env,observation_space_mode,SAVE_PATH,Comments
+121623001940,PPO,CARTESIAN_PD,FLAGRUN,DEFAULT,./logs/intermediate_models/121623001940/,Runs in circles?
+121623001104,PPO,CPG,FWD_LOCOMOTION,DEFAULT,./logs/intermediate_models/121623001104/,Careful to specify right motor_control mode in load_sb3. Runs well and smooth
+121623003211,PPO,CARTESIAN_PD,LR_COURSE_TASK,LR_COURSE_OBS,./logs/intermediate_models/121623003211/,"Leg oscillations too fast + swing from side to side, too much energy spent? I wrote it wrong, maybe this was PD"
+121623122037,PPO,CARTESIAN_PD,LR_COURSE_TASK,LR_COURSE_OBS,./logs/intermediate_models/121623122037/,run done in respone to mistake in previous run
+
+121623233019,PPO,CARTESIAN_PD,LR_COURSE_TASK,LR_COURSE_OBS,./logs/intermediate_models/121623233019/,Fucking sucks
+121623233424,PPO,CARTESIAN_PD,LR_COURSE_TASK,LR_COURSE_OBS,./logs/intermediate_models/121623233424/,Fucking sucks as well lol
+121623184835,PPO,CPG,FWD_LOCOMOTION,LR_COURSE_OBS,./logs/intermediate_models/121623184835/,"Solid af, maybe a little slow?"
