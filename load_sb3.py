@@ -55,10 +55,11 @@ from utils.utils import plot_results
 from utils.file_utils import get_latest_model, load_all_results
 
 
+
 LEARNING_ALG = "PPO"
 interm_dir = "./logs/intermediate_models/"
 # path to saved models, i.e. interm_dir + '121321105810'
-log_dir = interm_dir + '121623003211'
+log_dir = interm_dir + '121023223235'
 
 # initialize env configs (render at test time)
 # check ideal conditions, as well as robustness to UNSEEN noise during training
@@ -94,7 +95,10 @@ obs = env.reset()
 episode_reward = 0
 
 # [TODO] initialize arrays to save data from simulation 
-#
+x_speed = np.empty(2000)
+x = np.empty(2000)
+y_speed = np.empty(2000)
+y = np.empty(2000)
 
 for i in range(2000):
     action, _states = model.predict(obs,deterministic=False) # sample at test time? ([TODO]: test)
@@ -107,6 +111,35 @@ for i in range(2000):
 
     # [TODO] save data from current robot states for plots 
     # To get base position, for example: env.envs[0].env.robot.GetBasePosition() 
-    #
+    x_speed[i] = env.envs[0].env.robot.GetBaseLinearVelocity()[0]
+    x[i] = env.envs[0].env.robot.GetBasePosition()[0]
+    y_speed[i] = env.envs[0].env.robot.GetBaseLinearVelocity()[1]
+    y[i] = env.envs[0].env.robot.GetBasePosition()[1]
     
 # [TODO] make plots:
+
+t = range(2000)
+fig = plt.figure(figsize=(9, 9))
+
+plt.subplot(221)
+plt.plot(t,x[:])
+plt.xlabel("Time [s]")
+plt.ylabel("Displacement in x [m]")
+
+plt.subplot(222)
+plt.plot(t,x_speed[:])
+plt.xlabel("Time [s]")
+plt.ylabel("Speed in x [m]")
+
+
+plt.subplot(223)
+plt.plot(t,y[:])
+plt.xlabel("Time [s]")
+plt.ylabel("Displacement in y [m]")
+
+plt.subplot(224)
+plt.plot(t,y_speed[:])
+plt.xlabel("Time [s]")
+plt.ylabel("Speed in y [m]")
+
+plt.show()
