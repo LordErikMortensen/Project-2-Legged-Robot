@@ -336,8 +336,8 @@ class QuadrupedGymEnv(gym.Env):
                                           self._cpg.get_dr(), # Know amplitudes of CPGs (see [2], p.3)
                                           self._cpg.get_dtheta(), # Know phases of CPGs (see [2], p.3)
                                           self._cpg.get_dphi(),
-                                          self.get_distance_and_angle_to_goal()[0], #distance to goal
-                                          self.get_distance_and_angle_to_goal()[1], #angle to goal
+                                          np.array([self.get_distance_and_angle_to_goal()[0]]), #distance to goal
+                                          np.array([self.get_distance_and_angle_to_goal()[1]]), #angle to goal
                                         ))
       else:
         self._observation = np.concatenate((self.robot.GetBaseOrientation(),
@@ -348,8 +348,8 @@ class QuadrupedGymEnv(gym.Env):
                                             self._cpg.get_theta(), # Know phases of CPGs (see [2], p.3)
                                             self._cpg.get_dr(), # Know amplitudes of CPGs (see [2], p.3)
                                             self._cpg.get_dtheta(), # Know phases of CPGs (see [2], p.3)
-                                            self.get_distance_and_angle_to_goal()[0], #distance to goal
-                                            self.get_distance_and_angle_to_goal()[1], #angle to goal
+                                            np.array([self.get_distance_and_angle_to_goal()[0]]), #distance to goal
+                                            np.array([self.get_distance_and_angle_to_goal()[1]]), #angle to goal
                                           ))
                                           #self.robot.GetMotorAngles(), # If CPG, not needed for omnidirectional motions [2]p.5
                                           #self.robot.GetMotorVelocities(), # '' same
@@ -440,8 +440,21 @@ class QuadrupedGymEnv(gym.Env):
 
     # minimize distance to goal (we want to move towards the goal)
     dist_reward = 10 * ( self._prev_pos_to_goal - curr_dist_to_goal)
+    #dist_reward = 10 * ( self._prev_pos_to_goal - curr_dist_to_goal)**2   # à tester
+
     # minimize yaw deviation to goal (necessary?)
-    yaw_reward = 0 # -0.01 * np.abs(angle) 
+    yaw_reward = 0 # -0.01 * np.abs(angle)        # ou -0.01 * angle**2
+    #yaw_reward = -0.01 * np.abs(angle)        # ou -0.01 * angle**2
+    #yaw_reward = -0.01 * angle**2
+
+
+    #       à tester
+    #il faut modifier le yaw reward (au moins en mettre un) pour que le robot s oriente face à 
+    #l'objectif (autrement il ira peut être en diagonal jusqu'à l'objectif en mode crabe...). 
+    #aussi il sera peut être plus efficace de mettre un reward sur le carré de l'angle au lieu 
+    #de valeur absolue (pareil pour la distace à l objectif). Le fait d'avoir un reward quadratique 
+    #sera peut être mieux car moins restrictif/rigide comme reward function et aussi le fait que ce 
+    #soit intégrable peut aider. 
 
     # minimize energy 
     energy_reward = 0 
