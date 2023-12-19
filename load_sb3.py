@@ -59,7 +59,7 @@ from utils.file_utils import get_latest_model, load_all_results
 LEARNING_ALG = "PPO"
 interm_dir = "./logs/intermediate_models/"
 # path to saved models, i.e. interm_dir + '121321105810'
-log_dir = interm_dir + '121023223235'
+log_dir = interm_dir + '121923010113'#'121023223235'
 
 # initialize env configs (render at test time)
 # check ideal conditions, as well as robustness to UNSEEN noise during training
@@ -122,9 +122,9 @@ t = range(2000)
 fig = plt.figure(figsize=(9, 9))
 
 plt.subplot(221)
-plt.plot(t,x[:])
+plt.plot(t,x[:],y[:])
 plt.xlabel("Time [s]")
-plt.ylabel("Displacement in x [m]")
+plt.ylabel("Displacement in x and y [m]")
 
 plt.subplot(222)
 plt.plot(t,x_speed[:])
@@ -133,8 +133,8 @@ plt.ylabel("Speed in x [m]")
 
 
 plt.subplot(223)
-plt.plot(t,y[:])
-plt.xlabel("Time [s]")
+plt.plot(x[:],y[:])
+plt.xlabel("Displacement in x [m]")
 plt.ylabel("Displacement in y [m]")
 
 plt.subplot(224)
@@ -143,3 +143,4 @@ plt.xlabel("Time [s]")
 plt.ylabel("Speed in y [m]")
 
 plt.show()
+

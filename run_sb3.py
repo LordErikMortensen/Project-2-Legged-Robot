@@ -52,7 +52,7 @@ USE_GPU = False # make sure to install all necessary drivers
 
 # LEARNING_ALG = "SAC";  USE_GPU = True
 # after implementing, you will want to test how well the agent learns with your MDP: 
-env_configs = {"motor_control_mode":"CPG",
+env_configs = {"motor_control_mode":"CPG_phi",
                "task_env": "FLAGRUN", #  "LR_COURSE_TASK",
                "observation_space_mode": "LR_COURSE_OBS"}
 # env_configs = {}
